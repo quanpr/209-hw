@@ -24,6 +24,7 @@ def parse_args():
 	return args
 
 class robot:
+	# Problem 1 a)
 	def __init__(self, errorPr=0, discount=1):
 		self.errorPr = errorPr
 		self.discount = discount
@@ -46,6 +47,7 @@ class robot:
 		self.actionMatrix = [[[['0', '0'] for _ in range(12)] for _ in range(6)] for _ in range(6)]
 
 	def computeNextState(self, currentState, action, prerotateError=True):
+		# Problem 1 d)
 		# prerotateError: to manually control whether the next state is deterministic
 		# currentState & nextState: [y, x, head]
 		# action ['F', '+']: 'F' for forward, 'B' for backward, '0' for still, '+' for clockwise, '-' anticlockwise
@@ -106,6 +108,7 @@ class robot:
 
 
 	def probActionState(self, currentState, nextState, action):
+		# Problem 1 d)
 		# return the probabiltiy of the next state given the current state and actions
 		# currentState & nextState: [y, x, head]
 		# action ('F', '+'): 'F' for forward, 'B' for backward, '0' for still, '+' for clockwise, '-' anticlockwise
@@ -132,6 +135,7 @@ class robot:
 				return 0
 
 	def getReward(self, state):
+		# Problem 2 a)
 		# return reward given the topology of environment
 		return self.reward[state[0], state[1]]
 
@@ -142,6 +146,7 @@ class robot:
 		return 1.0 if state[0]==4 and state[1]==3 and state[2] in down else 0.0
 
 	def initialPolicy(self):
+		# Problem 3 a)
 		# flood the actionMatrix with initial policy
 		# goal position: idx (y, x) = (4, 3)
 		def computeDistance(currentState, nextState):
@@ -188,6 +193,7 @@ class robot:
 					self.actionMatrix[y][x][h] = List[0][1]
 
 	def getTrajectory(self, startPoint, actionMatrix):
+		# Problem 3 b)
 		result = []
 		idx = startPoint[:]
 		result.append(idx)
@@ -202,6 +208,7 @@ class robot:
 	
 	
 	def plotTrajectory(self, trajectory):
+		# Problem 3 b)
 		tra = trajectory
 		plt.plot([t[1] for t in tra], [t[0] for t in tra])
 		plt.ylabel('y-axis')
@@ -213,7 +220,9 @@ class robot:
 		plt.show()
 
 	def computeValue(self, iteration=20, modified=False):
-		# Iterative policy evaluation
+		# Problem 3 d)
+		# Iterative policy evaluation.
+		# Iteration is the number of iterations conducted for one evaluation
 		def isAjcent(currentState, nextState):
 			return False if sum([abs(currentState[i]-nextState[i]) for i in range(2)]) > 1 \
 					else True
@@ -267,6 +276,7 @@ class robot:
 
 
 	def updatePolicy(self):
+		# Problem 3 f)
 		# traverse all possible actions of an input state, find out the optimal action that maximize value of the state
 		updated = False
 		for i in range(6):
@@ -293,6 +303,7 @@ class robot:
 		return updated
 
 	def policyIteration(self, iteration=20, modified=False):
+		# Problem 3 g)
 		# merge policy evaluation and policy searching as policy iteration
 		self.initialPolicy()
 		updated = True
@@ -310,6 +321,7 @@ class robot:
 	# valueMatrix: the value of each state
 	# actionMatrix: policy matrix, each state corresponding to one action
 	def valueIteration(self, horizon):
+		#Problem 4a
 		self.valueMatrix = np.zeros((6,6,12)) #reset valueMatrix to zeros
 		for n in range(horizon): #iterate until meet horizon
 
@@ -383,45 +395,3 @@ if __name__ == '__main__':
 		print('Unrecognized iteration type.')
 		pdb.set_trace()
 
-	'''
-	#print(robot.computeNextState([0,0,1], ['B', '+']))
-	#print(robot.probActionState([5,5,11],[5,5,1], ['F', '+']))
-	robot.initialPolicy()
-	result = robot.getTrajectory([4,1,6], robot.actionMatrix)
-	robot.plotTrajectory(result)
-	
-	robot.computeValue()
-	# compute value of trajectory
-	value = 0
-	for state in result:
-		print(robot.valueMatrix[state[0]][state[1]][state[2]])
-		value += robot.valueMatrix[state[0]][state[1]][state[2]]
-	pdb.set_trace()
-	#robot.computeValue(iteration=20, modified=modifiedReward)
-	#pdb.set_trace()
-	'''
-	#robot.initialPolicy()
-	#robot.updatePolicy()
-	'''
-	a = time.time()
-	#robot.policyIteration()
-	robot.policyIteration(iteration=20, modified=modifiedReward)
-	b = time.time()
-	print('Time comsumed of policy iteration: {:.3f}'.format(b-a))
-	result = robot.getTrajectory([4,1,6], robot.actionMatrix)
-	robot.plotTrajectory(result)
-	#pdb.set_trace()
-	#print(robot.actionMatrix)
-	'''
-	#Problem 4b
-	#robot = robot(0,0.9)  #initialize with error probability and discount factor
-	#problem 5a
-	#robot = robot(0.25,0.9)
-	'''
-	a = time.time()
-	robot.valueIteration(1000) #horizon set to 1000
-	b= time.time()
-	print('Time comsume of value iteration: {:.3f}'.format(b-a))
-	result = robot.getTrajectory([4,1,6], robot.actionMatrix)
-	robot.plotTrajectory(result)
-	'''
