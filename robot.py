@@ -3,8 +3,25 @@ import pdb
 import random
 import matplotlib
 import time
+from copy import deepcopy
 matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
+import argparse
+
+def parse_args():
+	"""
+	Parse input arguments
+	"""
+	parser = argparse.ArgumentParser(description='Homework for Markov Decesion Process')
+	parser.add_argument('--errorPr', dest='errorPr',help='probability of prerotating error',default=0.0, type=float)
+	parser.add_argument('--dis', dest='dis', help='discount_factor',default=0.9, type=float)
+	parser.add_argument('--initial', dest='initial', help='policy initialization', action='store_true')
+	parser.add_argument('--plot', dest='plot', help='plot trajectory', action='store_true')
+	parser.add_argument('--feature', dest='feature', help='type of iterations',
+						default='policy_iteration', type=str)
+	parser.add_argument('--mod', dest='mod',help='use modified reward function, which require pointing downward',action='store_true')
+	args = parser.parse_args()
+	return args
 
 class robot:
 	def __init__(self, errorPr=0, discount=1):
@@ -24,13 +41,7 @@ class robot:
 					   [-100, 0,	-10,  1,	-10,  -100],
 					   [-100, -100, -100, -100, -100, -100],
 						]
-		'''self.reward = [[-100, -100, -100, -100, -100, -100],
-					   [-100, 0,	0,	  0, 	0,	  -100],
-					   [-100, 0,	-1000,  0,	-1000,  -100],
-					   [-100, 0,	-1000,  0,	-1000,  -100],
-					   [-100, 0,	-1000,  100,	-1000,  -100],
-					   [-100, -100, -1000, -1000, -1000, -100],
-						]'''
+
 		self.valueMatrix = np.array([[[0.0 for _ in range(12)] for _ in range(6)] for _ in range(6)])
 		self.actionMatrix = [[[['0', '0'] for _ in range(12)] for _ in range(6)] for _ in range(6)]
 
@@ -181,6 +192,7 @@ class robot:
 		idx = startPoint[:]
 		result.append(idx)
 		i = 0
+		print('trajectory:')
 		while idx[0] != 4 or idx[1] != 3:
 			idx = self.computeNextState(idx, actionMatrix[idx[0]][idx[1]][idx[2]], prerotateError=False)
 			if idx in result: break
@@ -220,12 +232,12 @@ class robot:
 						#if i == 4 and j == 0 and k == 0: pdb.set_trace()
 						if not modified:
 							self.valueMatrix[i][j][k] = sum([self.probActionState(currentState, state, action)*\
-								   						valueMatrix[state[0]][state[1]][state[2]] \
-								   						for state in nextState])*self.discount + self.reward[i][j]
+														valueMatrix[state[0]][state[1]][state[2]] \
+														for state in nextState])*self.discount + self.reward[i][j]
 						else:
 							self.valueMatrix[i][j][k] = sum([self.probActionState(currentState, state, action)*\
-								   						valueMatrix[state[0]][state[1]][state[2]] \
-								   						for state in nextState])*self.discount + self.getConditionalReward(currentState)
+														valueMatrix[state[0]][state[1]][state[2]] \
+														for state in nextState])*self.discount + self.getConditionalReward(currentState)
 
 	def computeValuePesudoInverse(self):
 		# another method for value evaluation by solving equations
@@ -289,12 +301,88 @@ class robot:
 			self.computeValue(iteration, modified)
 			updated = self.updatePolicy()
 
+	#Problem 4a
+	# valueIteration(horizon)
+	# this function perform value iteration
+	# horizon: limit the maximum iteration, in case of convergence never happened
+	#
+	# return valueMatrix, actionMatrix
+	# valueMatrix: the value of each state
+	# actionMatrix: policy matrix, each state corresponding to one action
+	def valueIteration(self, horizon):
+		self.valueMatrix = np.zeros((6,6,12)) #reset valueMatrix to zeros
+		for n in range(horizon): #iterate until meet horizon
 
+			#assign update value to Q(s',a)
+			valueHolder = deepcopy(self.valueMatrix)
+
+			#Iterate through all Current State
+			for i in range(6):
+				for j in range(6):
+					for k in range(12):
+
+						actionValueCollection = [] #Hold 7 Q(s,a)
+
+						#iterate through 7 action
+						for a in range(7):
+							currentState = [i,j,k]
+							Qsa = 0.0
+							nextState = []
+							#possible next three state given action
+							nextState.append(self.computeNextState([i, j, k], self.actionSpace[a], False))
+							nextState.append(self.computeNextState([i, j, (k+1)%12], self.actionSpace[a], False))
+							nextState.append(self.computeNextState([i, j, (k-1)%12], self.actionSpace[a], False))
+
+							#Calculate Q(s,a)
+							for state in nextState:
+								Qsa += self.probActionState(currentState,state,self.actionSpace[a]) * \
+										(float(self.reward[i][j])+ self.discount * valueHolder[state[0]][state[1]][state[2]])
+							#Store Q(s,a)
+							actionValueCollection.append(Qsa)
+						Qsa = 0.0 #reset Qsa value
+
+						#Compare Q(s,a1)~Q(s,a7), choose the action with highest Q(s,a)
+						self.valueMatrix[i][j][k] = np.max(actionValueCollection)
+						self.actionMatrix[i][j][k] = self.actionSpace[actionValueCollection.index(np.max(actionValueCollection))]
+
+			#exist loop early if converge
+			if np.all(self.valueMatrix.round(0) == valueHolder.round(0)):
+				print( 'number of iteration {}'.format(n))
+				break
+
+		return self.valueMatrix.round(0), self.actionMatrix
 
 if __name__ == '__main__':
-	robot = robot(errorPr=0.025, discount=0.9)
-	modifiedReward = False
-	
+	args = parse_args()
+	modifiedReward = args.mod
+	robot = robot(errorPr=args.errorPr, discount=args.dis)
+	if args.initial:
+		robot.initialPolicy()
+		result = robot.getTrajectory([4,1,6], robot.actionMatrix)
+		if args.plot:
+			robot.plotTrajectory(result)	
+
+	if args.feature == 'policy_iteration':
+		a = time.time()
+		robot.policyIteration(iteration=20, modified=modifiedReward)
+		b = time.time()
+		print('Time comsumed of policy iteration: {:.3f}'.format(b-a))
+		result = robot.getTrajectory([4,1,6], robot.actionMatrix)
+		if args.plot:
+			robot.plotTrajectory(result)
+
+	elif args.feature == 'value_iteration':
+		a = time.time()
+		robot.valueIteration(1000) #horizon set to 1000
+		b= time.time()
+		print('Time comsume of value iteration: {:.3f}'.format(b-a))
+		result = robot.getTrajectory([4,1,6], robot.actionMatrix)
+		if args.plot:
+			robot.plotTrajectory(result)
+	else:
+		print('Unrecognized iteration type.')
+		pdb.set_trace()
+
 	'''
 	#print(robot.computeNextState([0,0,1], ['B', '+']))
 	#print(robot.probActionState([5,5,11],[5,5,1], ['F', '+']))
@@ -314,7 +402,7 @@ if __name__ == '__main__':
 	'''
 	#robot.initialPolicy()
 	#robot.updatePolicy()
-	
+	'''
 	a = time.time()
 	#robot.policyIteration()
 	robot.policyIteration(iteration=20, modified=modifiedReward)
@@ -322,6 +410,18 @@ if __name__ == '__main__':
 	print('Time comsumed of policy iteration: {:.3f}'.format(b-a))
 	result = robot.getTrajectory([4,1,6], robot.actionMatrix)
 	robot.plotTrajectory(result)
-	pdb.set_trace()
-	print(robot.actionMatrix)
-
+	#pdb.set_trace()
+	#print(robot.actionMatrix)
+	'''
+	#Problem 4b
+	#robot = robot(0,0.9)  #initialize with error probability and discount factor
+	#problem 5a
+	#robot = robot(0.25,0.9)
+	'''
+	a = time.time()
+	robot.valueIteration(1000) #horizon set to 1000
+	b= time.time()
+	print('Time comsume of value iteration: {:.3f}'.format(b-a))
+	result = robot.getTrajectory([4,1,6], robot.actionMatrix)
+	robot.plotTrajectory(result)
+	'''
