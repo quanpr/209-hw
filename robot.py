@@ -137,13 +137,13 @@ class robot:
 	def getReward(self, state):
 		# Problem 2 a)
 		# return reward given the topology of environment
-		return self.reward[state[0], state[1]]
+		return self.reward[state[0]][state[1]]
 
 	def getConditionalReward(self, state):
 		# return reward given the topology of environment, under the condition that
 		# robot has to head downward
 		down = set([5,6,7])
-		return 1.0 if state[0]==4 and state[1]==3 and state[2] in down else 0.0
+		return 1.0 if state[0]==4 and state[1]==3 and state[2] in down else self.reward[state[0]][state[1]]
 
 	def initialPolicy(self):
 		# Problem 3 a)
@@ -209,6 +209,9 @@ class robot:
 	
 	def plotTrajectory(self, trajectory):
 		# Problem 3 b)
+		value = [self.valueMatrix[tra[0]][tra[1]][tra[2]] for tra in trajectory]
+		print('value of the trajectory is: {}'.format(value))
+		print('sum of the value of the trajectory: {:.3f}'.format(sum(value)))
 		tra = trajectory
 		plt.plot([t[1] for t in tra], [t[0] for t in tra])
 		plt.ylabel('y-axis')
@@ -370,6 +373,7 @@ if __name__ == '__main__':
 	robot = robot(errorPr=args.errorPr, discount=args.dis)
 	if args.initial:
 		robot.initialPolicy()
+		robot.computeValue()
 		result = robot.getTrajectory([4,1,6], robot.actionMatrix)
 		if args.plot:
 			robot.plotTrajectory(result)	
