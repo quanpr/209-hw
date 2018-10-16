@@ -4,7 +4,7 @@ Solution to EE 209 AS Homework 1.
 Instructor: Prof. Ankur Mehta
 Team member: Ray Lin, Pengrui Quan
 
-To run the code, under the current directory, type:
+To run the code, under the current directory, type in the command line:
 
 	python ./robot.py --feature policy_iteration --errorPr 0.025 --dis 0.9 --plot 
 
